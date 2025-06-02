@@ -16,8 +16,8 @@ ORC AI is a pioneering AI agent for **autonomous workflow orchestration**, initi
 
 **ORC AI** features a modular, extensible architecture with three main layers:
 ```text
-orc-ai-prototype/
-├── podman/                # Or docker/ if using docker-compose
+podman/
+├── baseline/                # Or docker/ if using docker-compose
 │   ├── data/              # For raw/processed data, synthetic data.
 │   │   ├── bronze/        # raw data, unrefined data.
 │   │   └── silver/        # preprocessed data.
