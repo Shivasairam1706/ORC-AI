@@ -18,13 +18,13 @@ ORC AI is a pioneering AI agent for **autonomous workflow orchestration**, initi
 ```text
 podman/
 ├── baseline/                # Or docker/ if using docker-compose
-│   ├── data/              # For raw/processed data, synthetic data.
-│   │   ├── bronze/        # raw data, unrefined data.
-│   │   └── silver/        # preprocessed data.
-│   ├── code/              # For DAGs, AI agent code, utility scripts.
-│   ├── model/             # For LLM weights, model configurations, saved models.
-│   ├── test/              # For unit, integration, and data quality tests.
-│   └── temp/              # For temporary files and logs [36-40]
+├── data/              # For raw/processed data, synthetic data.
+│   ├── bronze/        # raw data, unrefined data.
+│   └── silver/        # preprocessed data.
+├── code/              # For DAGs, AI agent code, utility scripts.
+├── model/             # For LLM weights, model configurations, saved models.
+├── test/              # For unit, integration, and data quality tests.
+├── temp/              # For temporary files and logs [36-40]
 ├── docker-compose.yml     # Or equivalent Podman Compose file. For multi container deployment.
 ├── requirements.txt       # For python packages
 ├── entrypoint.txt         # For python packages
