@@ -1,0 +1,330 @@
+groups:
+  - name: airflow_system_alerts
+    rules:
+      # Airflow Webserver Health
+      - alert: AirflowWebserverDown
+        expr: up{job="airflow-webserver"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: airflow
+          component: webserver
+        annotations:
+          summary: "Airflow Webserver is down"
+          description: "Airflow Webserver has been down for more than 2 minutes"
+          runbook_url: "https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html"
+
+      # Airflow Scheduler Health
+      - alert: AirflowSchedulerDown
+        expr: up{job="airflow-scheduler"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: airflow
+          component: scheduler
+        annotations:
+          summary: "Airflow Scheduler is down"
+          description: "Airflow Scheduler has been down for more than 2 minutes"
+          runbook_url: "https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html"
+
+      # Redis Connection Issues
+      - alert: RedisConnectionDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+          component: broker
+        annotations:
+          summary: "Redis message broker is down"
+          description: "Redis broker has been unavailable for more than 1 minute"
+
+      # PostgreSQL Connection Issues
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: postgresql
+          component: database
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "PostgreSQL database has been down for more than 2 minutes"
+
+  - name: airflow_performance_alerts
+    rules:
+      # High Task Failure Rate
+      - alert: HighTaskFailureRate
+        expr: (rate(airflow_task_instance_failures_total[5m]) / rate(airflow_task_instance_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: airflow
+          component: tasks
+        annotations:
+          summary: "High task failure rate detected"
+          description: "Task failure rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      # DAG Import Errors
+      - alert: DAGImportErrors
+        expr: airflow_dag_import_errors > 0
+        for: 1m
+        labels:
+          severity: warning
+          service: airflow
+          component: dag_processor
+        annotations:
+          summary: "DAG import errors detected"
+          description: "{{ $value }} DAG(s) have import errors"
+
+      # Long Running Tasks
+      - alert: LongRunningTasks
+        expr: airflow_task_instance_duration{state="running"} > 3600
+        for: 0s
+        labels:
+          severity: warning
+          service: airflow
+          component: tasks
+        annotations:
+          summary: "Long running task detected"
+          description: "Task {{ $labels.dag_id }}.{{ $labels.task_id }} has been running for more than 1 hour"
+
+      # Zombie Tasks
+      - alert: ZombieTasks
+        expr: airflow_zombies_killed_total > 0
+        for: 0s
+        labels:
+          severity: warning
+          service: airflow
+          component: scheduler
+        annotations:
+          summary: "Zombie tasks detected and killed"
+          description: "{{ $value }} zombie tasks have been killed"
+
+  - name: airflow_capacity_alerts
+    rules:
+      # High Memory Usage
+      - alert: AirflowHighMemoryUsage
+        expr: (container_memory_usage_bytes{name=~"orc-ai-.*"} / container_spec_memory_limit_bytes{name=~"orc-ai-.*"}) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: airflow
+          component: "{{ $labels.name }}"
+        annotations:
+          summary: "High memory usage in Airflow component"
+          description: "Memory usage is {{ $value | humanizePercentage }} for {{ $labels.name }}"
+
+      # High CPU Usage
+      - alert: AirflowHighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total{name=~"orc-ai-.*"}[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: airflow
+          component: "{{ $labels.name }}"
+        annotations:
+          summary: "High CPU usage in Airflow component"
+          description: "CPU usage is {{ $value | humanizePercentage }} for {{ $labels.name }}"
+
+      # PostgreSQL Connection Pool Exhaustion
+      - alert: PostgreSQLConnectionPoolHigh
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          service: postgresql
+          component: connection_pool
+        annotations:
+          summary: "PostgreSQL connection pool usage high"
+          description: "Connection pool usage is {{ $value | humanizePercentage }}"
+
+      # Redis Memory Usage High
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+          component: memory
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+  - name: airflow_dag_alerts
+    rules:
+      # DAG Run Failures
+      - alert: DAGRunFailures
+        expr: increase(airflow_dag_run_failed_total[10m]) > 0
+        for: 0s
+        labels:
+          severity: warning
+          service: airflow
+          component: dag_runs
+        annotations:
+          summary: "DAG run failures detected"
+          description: "{{ $value }} DAG run(s) have failed in the last 10 minutes for DAG: {{ $labels.dag_id }}"
+
+      # DAG Not Scheduled
+      - alert: DAGNotScheduled
+        expr: time() - airflow_dag_last_scheduling_decision_timestamp > 3600
+        for: 0s
+        labels:
+          severity: warning
+          service: airflow
+          component: scheduler
+        annotations:
+          summary: "DAG has not been scheduled recently"
+          description: "DAG {{ $labels.dag_id }} has not been scheduled for more than 1 hour"
+
+      # Critical DAG Failure
+      - alert: CriticalDAGFailure
+        expr: airflow_dag_run_failed_total{dag_id=~".*critical.*|.*prod.*|.*important.*"} > 0
+        for: 0s
+        labels:
+          severity: critical
+          service: airflow
+          component: critical_dags
+        annotations:
+          summary: "Critical DAG failure detected"
+          description: "Critical DAG {{ $labels.dag_id }} has failed"
+
+      # SLA Miss
+      - alert: DAGSLAMiss
+        expr: airflow_sla_misses_total > 0
+        for: 0s
+        labels:
+          severity: warning
+          service: airflow
+          component: sla
+        annotations:
+          summary: "DAG SLA miss detected"
+          description: "SLA miss detected for DAG: {{ $labels.dag_id }}, Task: {{ $labels.task_id }}"
+
+  - name: airflow_worker_alerts
+    rules:
+      # No Active Workers
+      - alert: NoActiveWorkers
+        expr: airflow_celery_active_workers == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: airflow
+          component: celery_workers
+        annotations:
+          summary: "No active Celery workers"
+          description: "No Celery workers are currently active"
+
+      # High Worker Load
+      - alert: HighWorkerLoad
+        expr: airflow_celery_queued_tasks / airflow_celery_active_workers > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: airflow
+          component: celery_workers
+        annotations:
+          summary: "High worker load detected"
+          description: "Average of {{ $value }} tasks per worker in queue"
+
+      # Worker Offline
+      - alert: WorkerOffline
+        expr: changes(airflow_celery_active_workers[5m]) < 0
+        for: 1m
+        labels:
+          severity: warning
+          service: airflow
+          component: celery_workers
+        annotations:
+          summary: "Celery worker went offline"
+          description: "A Celery worker has gone offline"
+
+  - name: airflow_data_quality_alerts
+    rules:
+      # Data Quality Check Failures
+      - alert: DataQualityCheckFailure
+        expr: airflow_task_instance_failures_total{task_id=~".*quality.*|.*validation.*|.*check.*"} > 0
+        for: 0s
+        labels:
+          severity: warning
+          service: airflow
+          component: data_quality
+        annotations:
+          summary: "Data quality check failure"
+          description: "Data quality check failed for task: {{ $labels.task_id }} in DAG: {{ $labels.dag_id }}"
+
+      # Data Pipeline Stalled
+      - alert: DataPipelineStalled
+        expr: time() - airflow_task_instance_start_timestamp{state="running"} > 7200
+        for: 0s
+        labels:
+          severity: critical
+          service: airflow
+          component: data_pipeline
+        annotations:
+          summary: "Data pipeline appears stalled"
+          description: "Task {{ $labels.dag_id }}.{{ $labels.task_id }} has been running for more than 2 hours"
+
+  - name: airflow_security_alerts
+    rules:
+      # Multiple Failed Login Attempts
+      - alert: MultipleFailedLogins
+        expr: increase(airflow_failed_login_attempts_total[5m]) > 5
+        for: 0s
+        labels:
+          severity: warning
+          service: airflow
+          component: security
+        annotations:
+          summary: "Multiple failed login attempts detected"
+          description: "{{ $value }} failed login attempts in the last 5 minutes"
+
+      # Unauthorized Access Attempt
+      - alert: UnauthorizedAccess
+        expr: airflow_unauthorized_access_attempts_total > 0
+        for: 0s
+        labels:
+          severity: critical
+          service: airflow
+          component: security
+        annotations:
+          summary: "Unauthorized access attempt detected"
+          description: "Unauthorized access attempt detected"
+
+  - name: orc_ai_custom_alerts
+    rules:
+      # AI Model Prediction Failures
+      - alert: AIModelPredictionFailure
+        expr: airflow_task_instance_failures_total{task_id=~".*ai_.*|.*model_.*|.*predict.*"} > 0
+        for: 0s
+        labels:
+          severity: warning
+          service: orc-ai
+          component: ai_models
+        annotations:
+          summary: "AI model prediction failure"
+          description: "AI model prediction failed for task: {{ $labels.task_id }} in DAG: {{ $labels.dag_id }}"
+
+      # ORC AI Health Check Failure
+      - alert: ORCAIHealthCheckFailure
+        expr: airflow_task_instance_failures_total{task_id="ai_health_check"} > 0
+        for: 0s
+        labels:
+          severity: critical
+          service: orc-ai
+          component: health_check
+        annotations:
+          summary: "ORC AI health check failure"
+          description: "ORC AI health check failed in DAG: {{ $labels.dag_id }}"
+
+      # Resource Optimization Alert
+      - alert: ResourceOptimizationNeeded
+        expr: (avg_over_time(airflow_task_instance_duration[1h]) > avg_over_time(airflow_task_instance_duration[24h]) * 1.5)
+        for: 0s
+        labels:
+          severity: info
+          service: orc-ai
+          component: optimization
+        annotations:
+          summary: "Task performance degradation detected"
+          description: "Task {{ $labels.dag_id }}.{{ $labels.task_id }} is taking 50% longer than usual"

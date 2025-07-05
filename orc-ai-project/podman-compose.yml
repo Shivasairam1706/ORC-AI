@@ -1,14 +1,14 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # PostgreSQL - Airflow metadata database
   postgres:
-    image: postgres:15-alpine
+    image: docker.io/postgres:15-alpine
     container_name: orc-ai-postgres
     environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow123
-      POSTGRES_DB: airflow
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     volumes:
       - ./orc_ai_data/postgres/data:/var/lib/postgresql/data
@@ -17,15 +17,15 @@ services:
     networks:
       - orc-ai-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 30s
       timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      retries: 1
+    #restart: unless-stopped
 
   # Redis - Celery message broker
   redis:
-    image: redis:7-alpine
+    image: docker.io/redis:7-alpine
     container_name: orc-ai-redis
     command: redis-server --appendonly yes
     volumes:
@@ -38,12 +38,12 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      retries: 1
+    #restart: unless-stopped
 
   # Airflow Webserver
   airflow-webserver:
-    image: apache/airflow:2.7.3-python3.10
+    image: docker.io/apache/airflow:2.7.3-python3.10
     container_name: orc-ai-webserver
     depends_on:
       postgres:
@@ -52,21 +52,21 @@ services:
         condition: service_healthy
     environment:
       AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow123@postgres:5432/airflow
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow123@postgres:5432/airflow
-      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
-      AIRFLOW__CORE__FERNET_KEY: 'your-fernet-key-here-replace-with-32-character-key'
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
-      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
-      AIRFLOW__WEBSERVER__RBAC: 'true'
-      AIRFLOW__METRICS__STATSD_ON: 'true'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      AIRFLOW__WEBSERVER__RBAC: "true"
+      AIRFLOW__METRICS__STATSD_ON: "true"
       AIRFLOW__METRICS__STATSD_HOST: localhost
       AIRFLOW__METRICS__STATSD_PORT: 8125
-      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-      _AIRFLOW_WWW_USER_USERNAME: admin
-      _AIRFLOW_WWW_USER_PASSWORD: admin123
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_ADMIN_USER}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD}
     volumes:
       - ./orc_ai_data/airflow/dags:/opt/airflow/dags
       - ./orc_ai_data/airflow/logs:/opt/airflow/logs
@@ -78,19 +78,19 @@ services:
     command: >
       bash -c "
       airflow db init &&
-      airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin123 &&
+      airflow users create --username ${AIRFLOW_ADMIN_USER} --firstname Admin --lastname User --role Admin --email admin@example.com --password ${AIRFLOW_ADMIN_PASSWORD} &&
       airflow webserver
       "
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      retries: 1
+    #restart: unless-stopped
 
   # Airflow Scheduler
   airflow-scheduler:
-    image: apache/airflow:2.7.3-python3.10
+    image: docker.io/apache/airflow:2.7.3-python3.10
     container_name: orc-ai-scheduler
     depends_on:
       postgres:
@@ -99,13 +99,13 @@ services:
         condition: service_healthy
     environment:
       AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow123@postgres:5432/airflow
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow123@postgres:5432/airflow
-      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
-      AIRFLOW__CORE__FERNET_KEY: 'your-fernet-key-here-replace-with-32-character-key'
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
     volumes:
       - ./orc_ai_data/airflow/dags:/opt/airflow/dags
       - ./orc_ai_data/airflow/logs:/opt/airflow/logs
@@ -114,15 +114,19 @@ services:
       - orc-ai-net
     command: airflow scheduler
     healthcheck:
-      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      test:
+        [
+          "CMD-SHELL",
+          'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"',
+        ]
       interval: 30s
       timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      retries: 1
+    #restart: unless-stopped
 
   # Airflow Worker
   airflow-worker:
-    image: apache/airflow:2.7.3-python3.10
+    image: docker.io/apache/airflow:2.7.3-python3.10
     container_name: orc-ai-worker
     depends_on:
       postgres:
@@ -131,12 +135,12 @@ services:
         condition: service_healthy
     environment:
       AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow123@postgres:5432/airflow
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow123@postgres:5432/airflow
-      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
-      AIRFLOW__CORE__FERNET_KEY: 'your-fernet-key-here-replace-with-32-character-key'
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     volumes:
       - ./orc_ai_data/airflow/dags:/opt/airflow/dags
       - ./orc_ai_data/airflow/logs:/opt/airflow/logs
@@ -145,25 +149,29 @@ services:
       - orc-ai-net
     command: airflow celery worker
     healthcheck:
-      test: ["CMD-SHELL", 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"']
+      test:
+        [
+          "CMD-SHELL",
+          'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"',
+        ]
       interval: 30s
       timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      retries: 1
+    #restart: unless-stopped
 
   # Flower - Celery monitoring
   airflow-flower:
-    image: apache/airflow:2.7.3-python3.10
+    image: docker.io/apache/airflow:2.7.3-python3.10
     container_name: orc-ai-flower
     depends_on:
       redis:
         condition: service_healthy
     environment:
       AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow123@postgres:5432/airflow
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow123@postgres:5432/airflow
-      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
-      AIRFLOW__CORE__FERNET_KEY: 'your-fernet-key-here-replace-with-32-character-key'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
     ports:
       - "5555:5555"
     networks:
@@ -173,12 +181,12 @@ services:
       test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
       interval: 30s
       timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      retries: 1
+    #restart: unless-stopped
 
   # Prometheus - Metrics collection
   prometheus:
-    image: prom/prometheus:v2.45.0
+    image: docker.io/prom/prometheus:v2.45.0
     container_name: orc-ai-prometheus
     ports:
       - "9090:9090"
@@ -188,22 +196,30 @@ services:
     networks:
       - orc-ai-net
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=200h"
+      - "--web.enable-lifecycle"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:9090/",
+        ]
       interval: 30s
       timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      retries: 1
+    #restart: unless-stopped
 
   # Grafana - Visualization and dashboards
   grafana:
-    image: grafana/grafana:10.0.0
+    image: docker.io/grafana/grafana:10.0.0
     container_name: orc-ai-grafana
     depends_on:
       - prometheus
@@ -213,23 +229,27 @@ services:
       - ./orc_ai_data/grafana/data:/var/lib/grafana
       - ./orc_ai_data/grafana/provisioning:/etc/grafana/provisioning
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: false
       GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
       GF_SECURITY_ALLOW_EMBEDDING: true
     networks:
       - orc-ai-net
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1",
+        ]
       interval: 30s
       timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      retries: 1
+    #restart: unless-stopped
 
   # Jupyter Notebook - Development and experimentation
   jupyter:
-    image: jupyter/datascience-notebook:latest
+    image: docker.io/jupyter/datascience-notebook:latest
     container_name: orc-ai-jupyter
     ports:
       - "8888:8888"
@@ -237,7 +257,7 @@ services:
       - ./orc_ai_data/jupyter/work:/home/jovyan/work
       - ./orc_ai_data/airflow/dags:/home/jovyan/dags
     environment:
-      JUPYTER_TOKEN: airflow123
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN}
       JUPYTER_ENABLE_LAB: "yes"
       GRANT_SUDO: "yes"
     networks:
@@ -245,14 +265,14 @@ services:
     command: >
       bash -c "
       pip install apache-airflow==2.7.3 psycopg2-binary redis prometheus-client &&
-      start-notebook.sh --NotebookApp.token='airflow123' --NotebookApp.password='' --NotebookApp.allow_root=True
+      start-notebook.sh --NotebookApp.token='${JUPYTER_TOKEN}' --NotebookApp.password='' --NotebookApp.allow_root=True
       "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8888/"]
       interval: 30s
       timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      retries: 1
+    #restart: unless-stopped
 
 networks:
   orc-ai-net:

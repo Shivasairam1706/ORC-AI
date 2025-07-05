@@ -33,7 +33,7 @@
         "type": "stat",
         "targets": [
           {
-            "expr": "up{job=~\"prometheus|airflow-webserver|flower\"}",
+            "expr": "up{job=~\"${PROM_JOB_REGEX}\"}",
             "refId": "A",
             "legendFormat": "{{job}}"
           }
@@ -86,9 +86,7 @@
         "options": {
           "reduceOptions": {
             "values": false,
-            "calcs": [
-              "lastNotNull"
-            ],
+            "calcs": ["lastNotNull"],
             "fields": ""
           },
           "orientation": "auto",
@@ -103,16 +101,14 @@
         "type": "table",
         "targets": [
           {
-            "expr": "increase(airflow_dag_run_duration_seconds_count[24h])",
+            "expr": "increase(${DAG_RUN_COUNT}[24h])",
             "refId": "A",
             "legendFormat": "{{dag_id}}"
           }
         ],
         "fieldConfig": {
           "defaults": {
-            "custom": {
-              
-            },
+            "custom": {},
             "mappings": [],
             "thresholds": {
               "mode": "absolute",
@@ -143,7 +139,7 @@
         "type": "timeseries",
         "targets": [
           {
-            "expr": "rate(airflow_task_instance_finished_total{state=\"success\"}[5m])",
+            "expr": "rate(${TASK_SUCCESS_METRIC}[5m])",
             "refId": "A",
             "legendFormat": "Success Rate"
           },
@@ -255,7 +251,7 @@
         "type": "stat",
         "targets": [
           {
-            "expr": "redis_up",
+            "expr": "${REDIS_UP_METRIC}",
             "refId": "A"
           }
         ],
@@ -306,9 +302,7 @@
           "orientation": "auto",
           "reduceOptions": {
             "values": false,
-            "calcs": [
-              "lastNotNull"
-            ],
+            "calcs": ["lastNotNull"],
             "fields": ""
           },
           "textMode": "auto"
@@ -320,7 +314,7 @@
         "type": "stat",
         "targets": [
           {
-            "expr": "pg_up",
+            "expr": "${POSTGRES_UP_METRIC}",
             "refId": "A"
           }
         ],
@@ -371,9 +365,7 @@
           "orientation": "auto",
           "reduceOptions": {
             "values": false,
-            "calcs": [
-              "lastNotNull"
-            ],
+            "calcs": ["lastNotNull"],
             "fields": ""
           },
           "textMode": "auto"
@@ -385,7 +377,7 @@
         "type": "stat",
         "targets": [
           {
-            "expr": "airflow_dag_paused{paused=\"False\"}",
+            "expr": "${ACTIVE_DAGS_METRIC}",
             "refId": "A"
           }
         ],
@@ -425,9 +417,7 @@
           "orientation": "auto",
           "reduceOptions": {
             "values": false,
-            "calcs": [
-              "lastNotNull"
-            ],
+            "calcs": ["lastNotNull"],
             "fields": ""
           },
           "textMode": "auto"
@@ -439,7 +429,7 @@
         "type": "timeseries",
         "targets": [
           {
-            "expr": "airflow_dag_run_duration_seconds",
+            "expr": "${DAG_RUN_DURATION_METRIC}",
             "refId": "A",
             "legendFormat": "{{dag_id}}"
           }
@@ -515,7 +505,7 @@
         "type": "piechart",
         "targets": [
           {
-            "expr": "airflow_task_instance_finished_total",
+            "expr": "${TASK_STATE_DISTRIBUTION_METRIC}",
             "refId": "A",
             "legendFormat": "{{state}}"
           }
@@ -545,9 +535,7 @@
         "options": {
           "reduceOptions": {
             "values": false,
-            "calcs": [
-              "lastNotNull"
-            ],
+            "calcs": ["lastNotNull"],
             "fields": ""
           },
           "pieType": "pie",
@@ -567,7 +555,7 @@
         "type": "table",
         "targets": [
           {
-            "expr": "celery_workers_total",
+            "expr": "${CELERY_WORKERS_METRIC}",
             "refId": "A"
           }
         ],

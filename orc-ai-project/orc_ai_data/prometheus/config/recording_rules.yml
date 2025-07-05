@@ -1,0 +1,141 @@
+groups:
+  - name: airflow_comprehensive_metrics
+    interval: 30s
+    rules:
+      # Airflow Task Metrics
+      - record: airflow:task_success_rate_5m
+        expr: |
+          (
+            rate(airflow_task_instance_success_total[5m]) /
+            (rate(airflow_task_instance_success_total[5m]) + rate(airflow_task_instance_failures_total[5m]))
+          ) * 100
+
+      - record: airflow:task_success_rate_1h
+        expr: |
+          (
+            rate(airflow_task_instance_success_total[1h]) /
+            (rate(airflow_task_instance_success_total[1h]) + rate(airflow_task_instance_failures_total[1h]))
+          ) * 100
+
+      - record: airflow:avg_task_duration_by_dag
+        expr: |
+          avg by (dag_id) (airflow_task_instance_duration)
+
+      - record: airflow:active_dags
+        expr: |
+          count(airflow_dag_runs_active)
+
+      - record: airflow:queued_tasks
+        expr: |
+          airflow_celery_queued_tasks
+
+      - record: airflow:running_tasks
+        expr: |
+          airflow_dag_runs_running
+
+      - record: airflow:dag_success_rate_1h
+        expr: |
+          (
+            rate(airflow_dag_run_success_total[1h]) /
+            (rate(airflow_dag_run_success_total[1h]) + rate(airflow_dag_run_failed_total[1h]))
+          ) * 100
+
+  - name: infra_monitoring_rules
+    interval: 30s
+    rules:
+      # Container resource metrics
+      - record: infra:container_cpu_usage_percent
+        expr: |
+          rate(container_cpu_usage_seconds_total{name=~"orc-ai-.*"}[5m]) * 100
+
+      - record: infra:container_memory_usage_percent
+        expr: |
+          (
+            container_memory_usage_bytes{name=~"orc-ai-.*"} /
+            container_spec_memory_limit_bytes{name=~"orc-ai-.*"}
+          ) * 100
+
+      - record: infra:disk_io_utilization
+        expr: |
+          rate(container_fs_io_time_seconds_total[5m])
+
+      - record: infra:network_io
+        expr: |
+          rate(container_network_receive_bytes_total[5m]) + rate(container_network_transmit_bytes_total[5m])
+
+  - name: db_metrics_rules
+    interval: 30s
+    rules:
+      - record: db:postgres_connections_percent
+        expr: |
+          (pg_stat_database_numbackends / pg_settings_max_connections) * 100
+
+      - record: db:postgres_cache_hit_ratio
+        expr: |
+          sum(rate(pg_stat_database_blks_hit[5m])) / (sum(rate(pg_stat_database_blks_hit[5m])) + sum(rate(pg_stat_database_blks_read[5m])))
+
+      - record: db:postgres_disk_usage
+        expr: |
+          sum(pg_database_size_bytes)
+
+  - name: redis_metrics_rules
+    interval: 30s
+    rules:
+      - record: redis:memory_usage_percent
+        expr: |
+          (redis_memory_used_bytes / redis_memory_max_bytes) * 100
+
+      - record: redis:connected_clients
+        expr: |
+          redis_connected_clients
+
+      - record: redis:blocked_clients
+        expr: |
+          redis_blocked_clients
+
+      - record: redis:commands_per_second
+        expr: |
+          rate(redis_commands_processed_total[5m])
+
+  - name: availability_and_alerts
+    interval: 15s
+    rules:
+      - record: system:services_up
+        expr: |
+          sum(up{job=~"airflow-.*|postgres|redis|prometheus|grafana"})
+
+      - record: system:critical_services_up
+        expr: |
+          sum(up{job=~"airflow-webserver|airflow-scheduler|postgres|redis"})
+
+      - record: system:service_availability
+        expr: |
+          up
+
+      - record: system:memory_pressure
+        expr: |
+          avg(infra:container_memory_usage_percent) > 85
+
+      - record: system:cpu_pressure
+        expr: |
+          avg(infra:container_cpu_usage_percent) > 85
+
+      - record: system:disk_io_pressure
+        expr: |
+          avg(infra:disk_io_utilization) > 75
+
+      - record: airflow:task_failure_alert
+        expr: |
+          rate(airflow_task_instance_failures_total[5m]) > 0.1
+
+      - record: airflow:high_queued_tasks_alert
+        expr: |
+          airflow:queued_tasks > 50
+
+      - record: airflow:low_dag_success_rate_alert
+        expr: |
+          airflow:dag_success_rate_1h < 80
+
+      - record: db:postgres_connection_alert
+        expr: |
+          db:postgres_connections_percent > 85
