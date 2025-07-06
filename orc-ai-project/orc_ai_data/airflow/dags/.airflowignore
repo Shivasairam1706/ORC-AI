@@ -1,0 +1,15 @@
+# Ignore Jupyter notebook checkpoint files
+.ipynb_checkpoints/
+*.ipynb_checkpoints*
+# Ignore Python cache files
+**pycache**/
+*.py[cod]
+*$py.class
+# Ignore temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+# Ignore any test files that shouldn't be processed as DAGs
+test_*.py
+*_test.py
