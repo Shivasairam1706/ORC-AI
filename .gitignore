@@ -202,8 +202,7 @@ data/
 #credentials
 credentials/
 
-
-
 #logs
 logs/
 logs.*
+*.db
