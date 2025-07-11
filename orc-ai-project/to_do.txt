@@ -1,2 +1,4 @@
 1. Create podman compose stack.
-2. create a new database in postgres (EDA).
+2. need to give read and write access to the 1000 users. Along with creating a access group for future users. Also, ensure that the access group has appropriate permissions for data management.
+3. create a new database in postgres (EDA).
+4.
