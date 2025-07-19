@@ -204,5 +204,5 @@ credentials/
 
 #logs
 logs/
-logs.*
+logs*.*
 *.db
